@@ -1,0 +1,179 @@
+###### Let's DBT ######
+
+dbt run
+dbt display
+dbt docs generate
+
+
+#### config block --> for a basic model, not included in a repository
+
+{{ config (
+    materialized="table"
+)}}
+
+
+#### how to reference a model
+
+{{ ref('stg_customers')}} ### the dummy model is supposed to be created by SQLcoding in SQL file named 'stg_customers'
+
+
+#### how to configure in dbt_project
+
+dbt-learn
+├── analysis
+├── dbt_modules
+├── logs
+├── macros
+├── models
+    └── marts
+        └── core
+              +materialize: table
+            └── dim_customers.sql  
+    └── staging
+        └── jaffle_shop
+              +materialize: table
+            ├── stg_customers.sql
+            └── stg_orders.sql 
+├── snapshots
+├── target
+├── tests
+├── .gitignore
+├── dbt_project.yml
+└── README.md
+
+
+
+###### set a source with yml file with freshness
+
+version: 2
+
+sources:
+  - name: jaffle_shop
+    database: raw
+    schema: jaffle_shop
+    tables:
+      - name: customers
+      - name: orders
+        loaded_at_field: _etl_loaded_at
+        freshness:
+          warn_after: {count: 12, period: hour}
+          error_after: {count: 24, period: hour}
+          
+          
+          
+##### set up test --> ex: models/staging/jaffle_shop/stg_jaffle_shop.yml
+
+models:
+  - name: stg_customers
+    columns: 
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_orders
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+      - name: status
+        tests:
+          - accepted_values:
+              values:
+                - completed
+                - shipped
+                - returned
+                - return_pending
+                - placed
+                
+ ###### test on a source:
+ 
+ version: 2
+
+sources:
+  - name: jaffle_shop
+    database: raw
+    schema: jaffle_shop
+    tables:
+      - name: customers
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+            
+      - name: orders
+        columns:
+          - name: id
+            tests:
+              - unique              
+              - not_null
+        loaded_at_field: _etl_loaded_at
+        freshness:
+          warn_after: {count: 12, period: hour}
+          error_after: {count: 24, period: hour}
+          
+###### create documentation on your model --> models/staging/jaffle_shop/stg_jaffle_shop.yml
+
+version: 2
+
+models:
+  - name: stg_customers
+    description: Staged customer data from our jaffle shop app.
+    columns: 
+      - name: customer_id
+        description: The primary key for customers.
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_orders
+    description: Staged order data from our jaffle shop app.
+    columns: 
+      - name: order_id
+        description: Primary key for orders.
+        tests:
+          - unique
+          - not_null
+      - name: status
+        description: "{{ doc('order_status') }}"
+        tests:
+          - accepted_values:
+              values:
+                - completed
+                - shipped
+                - returned
+                - placed
+                - return_pending
+      - name: customer_id
+        description: Foreign key to stg_customers.customer_id.
+        tests:
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
+              
+##### lean version on a md file ---> models/staging/jaffle_shop/jaffle_shop.md
+
+{% docs order_status %}
+	
+One of the following values: 
+
+| status         | definition                                       |
+|----------------|--------------------------------------------------|
+| placed         | Order placed, not yet shipped                    |
+| shipped        | Order has been shipped, not yet been delivered   |
+| completed      | Order has been received by customers             |
+| return pending | Customer indicated they want to return this item |
+| returned       | Item has been returned                           |
+
+{% enddocs %}
+
+
+
+          
+          
+          
+          
+          
+ 
