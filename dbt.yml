@@ -3,6 +3,7 @@
 dbt run
 dbt display
 dbt docs generate
+dbt build
 
 
 #### config block --> for a basic model, not included in a repository
